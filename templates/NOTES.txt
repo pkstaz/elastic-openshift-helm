@@ -1,0 +1,88 @@
+{{- if .Values.elasticvue.enabled }}
+{{- $elasticsearchService := include "elasticsearch-openshift.elasticsearch.serviceName" . }}
+{{- $elasticvueService := include "elasticsearch-openshift.elasticvue.serviceName" . }}
+{{- $namespace := include "elasticsearch-openshift.namespace" . }}
+{{- $clusterName := include "elasticsearch-openshift.clusterName" . }}
+
+🎉 Elasticsearch has been deployed successfully!
+
+📋 **Deployment Summary:**
+   - Namespace: {{ $namespace }}
+   - Elasticsearch Cluster: {{ $clusterName }}
+   - Elasticsearch Version: {{ .Values.elasticsearch.version }}
+   - ElasticVue UI: {{ .Values.elasticvue.enabled | ternary "Enabled" "Disabled" }}
+
+🔍 **Access Information:**
+
+{{- if .Values.route.enabled }}
+**External Access (Routes):**
+   - Elasticsearch: https://{{ .Values.route.host | default (printf "%s-elasticsearch-%s.%s" (include "elasticsearch-openshift.fullname" .) .Release.Namespace (.Values.route.host | default "apps.example.com")) }}
+{{- if and .Values.elasticvue.enabled .Values.elasticvue.route.enabled }}
+   - ElasticVue UI: https://{{ .Values.elasticvue.route.host | default (printf "%s-elasticvue-%s.%s" (include "elasticsearch-openshift.fullname" .) .Release.Namespace (.Values.route.host | default "apps.example.com")) }}
+{{- end }}
+{{- end }}
+
+**Internal Access:**
+   - Elasticsearch Service: {{ $elasticsearchService }}.{{ $namespace }}.svc:9200
+{{- if .Values.elasticvue.enabled }}
+   - ElasticVue Service: {{ $elasticvueService }}.{{ $namespace }}.svc:{{ .Values.elasticvue.service.port }}
+{{- end }}
+
+🔐 **Authentication:**
+   - Username: kubeadmin
+   - Password: Get from secret: `oc get secret {{ $clusterName }}-es-elastic-user -n {{ $namespace }} -o jsonpath='{.data.elastic}' | base64 -d`
+
+🔧 **Useful Commands:**
+
+Check cluster status:
+   oc get elasticsearch {{ $clusterName }} -n {{ $namespace }}
+
+Check pods:
+   oc get pods -n {{ $namespace }} -l cluster-name={{ $clusterName }}
+
+Check ElasticVue deployment:
+   oc get deployment {{ include "elasticsearch-openshift.fullname" . }}-elasticvue -n {{ $namespace }}
+
+Get Elasticsearch password:
+   oc get secret {{ $clusterName }}-es-elastic-user -n {{ $namespace }} -o jsonpath='{.data.elastic}' | base64 -d
+
+Test Elasticsearch connection:
+   oc exec -n {{ $namespace }} -c elasticsearch $(oc get pods -n {{ $namespace }} -l cluster-name={{ $clusterName }} -o jsonpath='{.items[0].metadata.name}') -- curl -k -u kubeadmin:$(oc get secret {{ $clusterName }}-es-elastic-user -n {{ $namespace }} -o jsonpath='{.data.elastic}' | base64 -d) https://localhost:9200
+
+📚 **Next Steps:**
+1. Wait for the Elasticsearch cluster to be ready (may take a few minutes)
+2. Access ElasticVue UI to manage your Elasticsearch cluster
+3. Configure indices and mappings as needed
+4. Set up monitoring and alerting
+
+⚠️ **Important Notes:**
+- The cluster uses self-signed certificates for TLS
+- Default storage class will be used if not specified
+- All nodes are configured as master, data, and ingest nodes
+- Health checks are configured for both Elasticsearch and ElasticVue
+
+For more information, visit: https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html
+{{- else }}
+🎉 Elasticsearch has been deployed successfully!
+
+📋 **Deployment Summary:**
+   - Namespace: {{ include "elasticsearch-openshift.namespace" . }}
+   - Elasticsearch Cluster: {{ include "elasticsearch-openshift.clusterName" . }}
+   - Elasticsearch Version: {{ .Values.elasticsearch.version }}
+   - ElasticVue UI: Disabled
+
+🔍 **Access Information:**
+   - Elasticsearch Service: {{ include "elasticsearch-openshift.elasticsearch.serviceName" . }}.{{ include "elasticsearch-openshift.namespace" . }}.svc:9200
+
+🔐 **Authentication:**
+{{- if .Values.elasticsearch.auth.enabled }}
+   - Username: elastic
+   - Password: Get from secret: `oc get secret {{ include "elasticsearch-openshift.clusterName" . }}-es-elastic-user -n {{ include "elasticsearch-openshift.namespace" . }} -o jsonpath='{.data.elastic}' | base64 -d`
+{{- else }}
+   - Authentication: Disabled
+{{- end }}
+
+🔧 **Useful Commands:**
+   oc get elasticsearch {{ include "elasticsearch-openshift.clusterName" . }} -n {{ include "elasticsearch-openshift.namespace" . }}
+   oc get pods -n {{ include "elasticsearch-openshift.namespace" . }} -l common.k8s.elastic.co/type=elasticsearch
+{{- end }} 

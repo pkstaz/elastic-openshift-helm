@@ -1,0 +1,13 @@
+{{- if .Values.namespace.create }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "elasticsearch-openshift.namespace" . }}
+  labels:
+    {{- include "elasticsearch-openshift.labels" . | nindent 4 }}
+    app.kubernetes.io/component: namespace
+  {{- if .Values.namespace.annotations }}
+  annotations:
+    {{- toYaml .Values.namespace.annotations | nindent 4 }}
+  {{- end }}
+{{- end }} 

@@ -1,0 +1,111 @@
+# Default values for elasticsearch-openshift
+# This is a YAML-formatted file.
+
+# Namespace configuration
+namespace:
+  name: elasticsearch
+  create: false
+
+# ElasticSearch cluster configuration
+elasticsearch:
+  clusterName: elasticsearch
+  
+  # Index management configuration
+  indexManagement:
+    enabled: false
+    mappings:
+      - aliases:
+          - infra
+          - logs.infra
+        name: infra
+        policyRef: infra-policy
+    policies:
+      - phases:
+          delete:
+            namespaceSpec:
+              - minAge: 5h
+                namespace: openshift-monitoring
+            minAge: 2d
+            pruneNamespacesInterval: 24h
+          hot:
+            actions:
+              rollover:
+                maxAge: 8h
+        name: infra-policy
+        pollInterval: 30m
+  
+  # Node specification
+  nodeSpec:
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 100m
+      limits:
+        memory: 1Gi
+        cpu: ""  # Empty means no CPU limit
+  
+  # Nodes configuration
+  nodes:
+    - roles:
+        - client
+        - data
+        - master
+      storage:
+        size: 20Gi
+      nodeCount: 1
+  
+  # Management configuration
+  managementState: Managed
+  redundancyPolicy: ZeroRedundancy
+
+# Service configuration
+service:
+  type: ClusterIP
+
+# Route configuration (OpenShift specific)
+route:
+  enabled: true
+  host: ""  # If empty, OpenShift will auto-generate
+  tls:
+    enabled: true
+    termination: edge
+
+# Operator configuration
+operator:
+  namespace: openshift-operators-redhat
+  channel: stable
+
+# ElasticVue configuration
+elasticvue:
+  enabled: true
+  image:
+    repository: cars10/elasticvue
+    tag: "1.0.4"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  
+  # Resources configuration
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 8080
+  
+  # Route configuration (OpenShift specific)
+  route:
+    enabled: true
+    host: ""  # If empty, OpenShift will auto-generate
+    tls:
+      enabled: true
+      termination: edge
+  
+  # ElasticSearch connection
+  elasticsearch:
+    uri: ""  # Auto-configured to connect to ES cluster

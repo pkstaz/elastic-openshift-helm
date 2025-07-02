@@ -1,0 +1,84 @@
+apiVersion: logging.openshift.io/v1
+kind: Elasticsearch
+metadata:
+  name: {{ include "elasticsearch-openshift.clusterName" . }}
+  namespace: {{ include "elasticsearch-openshift.namespace" . }}
+  labels:
+    {{- include "elasticsearch-openshift.labels" . | nindent 4 }}
+    app.kubernetes.io/component: elasticsearch
+spec:
+  {{- if .Values.elasticsearch.indexManagement.enabled }}
+  indexManagement:
+    {{- if .Values.elasticsearch.indexManagement.mappings }}
+    mappings:
+      {{- range .Values.elasticsearch.indexManagement.mappings }}
+      - aliases:
+          {{- range .aliases }}
+          - {{ . }}
+          {{- end }}
+        name: {{ .name }}
+        policyRef: {{ .policyRef }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.elasticsearch.indexManagement.policies }}
+    policies:
+      {{- range .Values.elasticsearch.indexManagement.policies }}
+      - phases:
+          {{- if .phases.delete }}
+          delete:
+            {{- if .phases.delete.namespaceSpec }}
+            namespaceSpec:
+              {{- range .phases.delete.namespaceSpec }}
+              - minAge: {{ .minAge }}
+                namespace: {{ .namespace }}
+              {{- end }}
+            {{- end }}
+            {{- if .phases.delete.minAge }}
+            minAge: {{ .phases.delete.minAge }}
+            {{- end }}
+            {{- if .phases.delete.pruneNamespacesInterval }}
+            pruneNamespacesInterval: {{ .phases.delete.pruneNamespacesInterval }}
+            {{- end }}
+          {{- end }}
+          {{- if .phases.hot }}
+          hot:
+            actions:
+              {{- if .phases.hot.actions.rollover }}
+              rollover:
+                {{- if .phases.hot.actions.rollover.maxAge }}
+                maxAge: {{ .phases.hot.actions.rollover.maxAge }}
+                {{- end }}
+              {{- end }}
+          {{- end }}
+        name: {{ .name }}
+        {{- if .pollInterval }}
+        pollInterval: {{ .pollInterval }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  
+  nodeSpec:
+    resources:
+      limits:
+        memory: {{ .Values.elasticsearch.nodeSpec.resources.limits.memory }}
+        {{- if .Values.elasticsearch.nodeSpec.resources.limits.cpu }}
+        cpu: {{ .Values.elasticsearch.nodeSpec.resources.limits.cpu }}
+        {{- end }}
+      requests:
+        memory: {{ .Values.elasticsearch.nodeSpec.resources.requests.memory }}
+        cpu: {{ .Values.elasticsearch.nodeSpec.resources.requests.cpu }}
+  
+  nodes:
+  {{- range .Values.elasticsearch.nodes }}
+  - roles:
+      {{- range .roles }}
+      - {{ . }}
+      {{- end }}
+    storage:
+      size: {{ .storage.size }}
+    nodeCount: {{ .nodeCount }}
+  {{- end }}
+  
+  managementState: {{ .Values.elasticsearch.managementState }}
+  redundancyPolicy: {{ .Values.elasticsearch.redundancyPolicy }} 
