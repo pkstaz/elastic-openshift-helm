@@ -1,0 +1,22 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "elasticsearch-openshift.clusterName" . }}-es-default
+  namespace: {{ include "elasticsearch-openshift.namespace" . }}
+  labels:
+    {{- include "elasticsearch-openshift.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pdb
+spec:
+  {{- if .Values.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  {{- if .Values.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      cluster-name: {{ include "elasticsearch-openshift.clusterName" . }}
+      node.roles: data
+{{- end }} 

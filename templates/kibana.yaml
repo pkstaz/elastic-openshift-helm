@@ -1,0 +1,25 @@
+{{- if .Values.kibana.enabled }}
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: {{ include "elasticsearch-openshift.clusterName" . }}-kb
+  namespace: {{ include "elasticsearch-openshift.namespace" . }}
+  labels:
+    {{- include "elasticsearch-openshift.kibana.labels" . | nindent 4 }}
+spec:
+  version: {{ .Values.kibana.version }}
+  count: {{ .Values.kibana.replicas }}
+  elasticsearchRef:
+    name: {{ include "elasticsearch-openshift.clusterName" . }}
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          {{- toYaml .Values.kibana.resources | nindent 10 }}
+{{- end }} 

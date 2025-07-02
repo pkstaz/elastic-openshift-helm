@@ -58,19 +58,19 @@ Elasticsearch cluster name
 {{- end }}
 
 {{/*
-ElasticVue labels
+Kibana labels
 */}}
-{{- define "elasticsearch-openshift.elasticvue.labels" -}}
-app.kubernetes.io/name: {{ include "elasticsearch-openshift.name" . }}-elasticvue
+{{- define "elasticsearch-openshift.kibana.labels" -}}
+app.kubernetes.io/name: {{ include "elasticsearch-openshift.name" . }}-kibana
 app.kubernetes.io/instance: {{ .Release.Name }}
-app.kubernetes.io/component: elasticvue
+app.kubernetes.io/component: kibana
 {{- end }}
 
 {{/*
-ElasticVue selector labels
+Kibana selector labels
 */}}
-{{- define "elasticsearch-openshift.elasticvue.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "elasticsearch-openshift.name" . }}-elasticvue
+{{- define "elasticsearch-openshift.kibana.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "elasticsearch-openshift.name" . }}-kibana
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
@@ -89,15 +89,19 @@ Elasticsearch service URL
 {{- end }}
 
 {{/*
-ElasticVue service name
+Kibana service name
 */}}
-{{- define "elasticsearch-openshift.elasticvue.serviceName" -}}
-{{- printf "%s-elasticvue" (include "elasticsearch-openshift.fullname" .) }}
+{{- define "elasticsearch-openshift.kibana.serviceName" -}}
+{{- printf "%s-kb" (include "elasticsearch-openshift.fullname" .) }}
 {{- end }}
 
 {{/*
 Namespace name
 */}}
 {{- define "elasticsearch-openshift.namespace" -}}
-{{- .Values.namespace.name | default .Release.Namespace }}
+{{- if .Values.namespace.name }}
+{{- .Values.namespace.name }}
+{{- else }}
+{{- .Release.Namespace }}
+{{- end }}
 {{- end }} 

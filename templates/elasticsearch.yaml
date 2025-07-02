@@ -1,4 +1,4 @@
-apiVersion: logging.openshift.io/v1
+apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
   name: {{ include "elasticsearch-openshift.clusterName" . }}
@@ -6,79 +6,41 @@ metadata:
   labels:
     {{- include "elasticsearch-openshift.labels" . | nindent 4 }}
     app.kubernetes.io/component: elasticsearch
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
 spec:
-  {{- if .Values.elasticsearch.indexManagement.enabled }}
-  indexManagement:
-    {{- if .Values.elasticsearch.indexManagement.mappings }}
-    mappings:
-      {{- range .Values.elasticsearch.indexManagement.mappings }}
-      - aliases:
-          {{- range .aliases }}
-          - {{ . }}
-          {{- end }}
-        name: {{ .name }}
-        policyRef: {{ .policyRef }}
-      {{- end }}
-    {{- end }}
-    {{- if .Values.elasticsearch.indexManagement.policies }}
-    policies:
-      {{- range .Values.elasticsearch.indexManagement.policies }}
-      - phases:
-          {{- if .phases.delete }}
-          delete:
-            {{- if .phases.delete.namespaceSpec }}
-            namespaceSpec:
-              {{- range .phases.delete.namespaceSpec }}
-              - minAge: {{ .minAge }}
-                namespace: {{ .namespace }}
-              {{- end }}
-            {{- end }}
-            {{- if .phases.delete.minAge }}
-            minAge: {{ .phases.delete.minAge }}
-            {{- end }}
-            {{- if .phases.delete.pruneNamespacesInterval }}
-            pruneNamespacesInterval: {{ .phases.delete.pruneNamespacesInterval }}
-            {{- end }}
-          {{- end }}
-          {{- if .phases.hot }}
-          hot:
-            actions:
-              {{- if .phases.hot.actions.rollover }}
-              rollover:
-                {{- if .phases.hot.actions.rollover.maxAge }}
-                maxAge: {{ .phases.hot.actions.rollover.maxAge }}
-                {{- end }}
-              {{- end }}
-          {{- end }}
-        name: {{ .name }}
-        {{- if .pollInterval }}
-        pollInterval: {{ .pollInterval }}
-        {{- end }}
-      {{- end }}
-    {{- end }}
-  {{- end }}
-  
-  nodeSpec:
-    resources:
-      limits:
-        memory: {{ .Values.elasticsearch.nodeSpec.resources.limits.memory }}
-        {{- if .Values.elasticsearch.nodeSpec.resources.limits.cpu }}
-        cpu: {{ .Values.elasticsearch.nodeSpec.resources.limits.cpu }}
-        {{- end }}
-      requests:
-        memory: {{ .Values.elasticsearch.nodeSpec.resources.requests.memory }}
-        cpu: {{ .Values.elasticsearch.nodeSpec.resources.requests.cpu }}
-  
-  nodes:
-  {{- range .Values.elasticsearch.nodes }}
-  - roles:
-      {{- range .roles }}
-      - {{ . }}
-      {{- end }}
-    storage:
-      size: {{ .storage.size }}
-    nodeCount: {{ .nodeCount }}
-  {{- end }}
-  
-  managementState: {{ .Values.elasticsearch.managementState }}
-  redundancyPolicy: {{ .Values.elasticsearch.redundancyPolicy }} 
+  version: {{ .Values.elasticsearch.version | default "8.11.0" }}
+  nodeSets:
+  - name: default
+    count: {{ .Values.elasticsearch.nodeSets.count | default 1 }}
+    podTemplate:
+      metadata:
+        labels:
+          app: {{ include "elasticsearch-openshift.clusterName" . }}
+          cluster-name: {{ include "elasticsearch-openshift.clusterName" . }}
+          node.roles: data
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              cpu: {{ .Values.elasticsearch.nodeSets.resources.requests.cpu | default "100m" }}
+              memory: {{ .Values.elasticsearch.nodeSets.resources.requests.memory | default "512Mi" }}
+            limits:
+              cpu: {{ .Values.elasticsearch.nodeSets.resources.limits.cpu | default "1000m" }}
+              memory: {{ .Values.elasticsearch.nodeSets.resources.limits.memory | default "1Gi" }}
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.elasticsearch.nodeSets.storage.size | default "10Gi" }}
+    config:
+      node.roles:
+      - master
+      - data
+      node.store.allow_mmap: false 

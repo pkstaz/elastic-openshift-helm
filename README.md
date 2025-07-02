@@ -1,65 +1,57 @@
 # Elasticsearch OpenShift Helm Chart
 
-A Helm chart for deploying Elasticsearch on OpenShift using the official Elasticsearch Operator with ElasticVue for web-based management.
+A Helm chart for deploying Elasticsearch on OpenShift using the official Elasticsearch Operator with Kibana for web-based management.
 
 ## Features
 
 - 🚀 **Elasticsearch Operator**: Uses the official Elasticsearch Operator for Kubernetes
 - 🔐 **Security**: Built-in authentication and TLS support
 - 🌐 **OpenShift Native**: Routes for external access, SecurityContextConstraints compliance
-- 📊 **ElasticVue**: Web-based Elasticsearch management interface
+- 📊 **Kibana**: Web-based Elasticsearch management interface
 - 🔧 **Configurable**: Highly customizable through values.yaml
 - 📈 **Monitoring Ready**: Health checks and resource management
 
 ## Prerequisites
 
-- OpenShift 4.x cluster
-- **OpenShift Logging Operator installed in the cluster** (REQUIRED - not installed by this chart)
+- OpenShift 4.18+ cluster
+- **Elasticsearch Operator installed in the cluster** (REQUIRED - not installed by this chart)
 - Helm 3.x
 - `oc` CLI tool configured
 
-**Important**: The OpenShift Logging Operator (which includes the Elasticsearch operator) must be installed separately before deploying this chart. This chart only deploys the Elasticsearch cluster, not the operator itself.
+**Important**: The Elasticsearch Operator must be installed separately before deploying this chart. This chart only deploys the Elasticsearch cluster, not the operator itself.
 
 ## Installation
 
-### 1. Install the OpenShift Logging Operator
+### 1. Install the Elasticsearch Operator
 
-**IMPORTANT**: The OpenShift Logging Operator must be installed in your cluster before deploying this chart. The chart does not install the operator automatically.
+**IMPORTANT**: The Elasticsearch Operator must be installed in your cluster before deploying this chart. The chart does not install the operator automatically.
 
 You can install the operator using one of these methods:
 
-**Method 1: Using OpenShift OperatorHub (Recommended)**
-1. Go to OpenShift Console → Operators → OperatorHub
-2. Search for "OpenShift Logging"
-3. Install the "OpenShift Logging" operator by Red Hat
-4. Wait for the installation to complete
-
-**Method 2: Using CLI**
+**Method 1: Manual installation**
 ```bash
-# Install via subscription
-oc apply -f - <<EOF
-apiVersion: operators.coreos.com/v1alpha1
-kind: Subscription
-metadata:
-  name: cluster-logging
-  namespace: openshift-logging
-spec:
-  channel: stable
-  installPlanApproval: Automatic
-  name: cluster-logging
-  source: redhat-operators
-  sourceNamespace: openshift-marketplace
-EOF
+# Create the namespace for the operator
+oc create namespace openshift-operators-redhat
+
+# Install the Elasticsearch Operator (compatible with OpenShift 4.18+)
+oc apply -f https://download.elastic.co/downloads/eck/2.12.0/crds.yaml
+oc apply -f https://download.elastic.co/downloads/eck/2.12.0/operator.yaml
 
 # Wait for operator to be ready
-oc wait --for=condition=ready pod -l name=cluster-logging-operator -n openshift-logging --timeout=300s
+oc wait --for=condition=ready pod -l name=elastic-operator -n openshift-operators-redhat --timeout=300s
 ```
+
+**Method 2: Using OpenShift OperatorHub**
+1. Go to OpenShift Console → Operators → OperatorHub
+2. Search for "Elasticsearch"
+3. Install the "Elasticsearch Operator" by Elastic
+4. Wait for the installation to complete
 
 ### 2. Install the Helm Chart
 
-**Prerequisite Check**: Ensure the OpenShift Logging Operator is running:
+**Prerequisite Check**: Ensure the Elasticsearch Operator is running:
 ```bash
-oc get pods -n openshift-logging -l name=cluster-logging-operator
+oc get pods -n openshift-operators-redhat -l name=elastic-operator
 ```
 
 **Install the chart**:
@@ -83,8 +75,8 @@ oc get elasticsearch -n elasticsearch
 # Check the pods
 oc get pods -n elasticsearch
 
-# Check the ElasticVue deployment
-oc get deployment -n elasticsearch
+# Check the Kibana deployment
+oc get kibana -n elasticsearch
 ```
 
 ## Configuration
@@ -106,14 +98,15 @@ The following table lists the configurable parameters of the elasticsearch-opens
 | `elasticsearch.nodes[0].nodeCount` | Number of nodes | `1` |
 | `elasticsearch.managementState` | Management state | `Managed` |
 | `elasticsearch.redundancyPolicy` | Redundancy policy | `ZeroRedundancy` |
-| `elasticvue.enabled` | Enable ElasticVue | `true` |
-| `elasticvue.image.repository` | ElasticVue image | `cars10/elasticvue` |
-| `elasticvue.image.tag` | ElasticVue image tag | `1.0.4` |
-| `elasticvue.replicas` | ElasticVue replicas | `1` |
+| `kibana.enabled` | Enable Kibana | `true` |
+| `kibana.version` | Kibana version | `8.11.0` |
+| `kibana.replicas` | Kibana replicas | `1` |
 | `route.enabled` | Enable OpenShift routes | `true` |
 | `route.host` | Route hostname | `""` (auto-generated) |
 | `route.tls.enabled` | Enable TLS for routes | `true` |
 | `route.tls.termination` | TLS termination type | `edge` |
+| `podDisruptionBudget.enabled` | Enable PodDisruptionBudget | `true` |
+| `podDisruptionBudget.minAvailable` | Minimum available pods | `1` |
 
 ### Example Custom Values
 
@@ -160,13 +153,17 @@ elasticsearch:
   managementState: Managed
   redundancyPolicy: SingleRedundancy
 
-elasticvue:
+kibana:
   enabled: true
   replicas: 2
 
 route:
   enabled: true
   host: "elasticsearch.mycompany.com"
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2  # For production with multiple nodes
 ```
 
 Install with custom values:
@@ -178,77 +175,146 @@ helm install my-elasticsearch ./elastic-openshift-helm \
   -f values-custom.yaml
 ```
 
-## Accessing Elasticsearch
+## Accessing Elasticsearch and Kibana
+
+> **⚠️ IMPORTANT:**
+> By default, external access to Kibana is via **http** (not https). Use `http://<kibana-route-host>` in your browser. If you want to enable https, you must configure TLS termination in the route and provide valid certificates.
+
+### Quick Access Information
+
+After installation, you can get connection details using:
+
+```bash
+# Get connection information
+helm get notes my-elasticsearch -n elasticsearch
+```
 
 ### External Access (Routes)
 
 If routes are enabled, you can access:
 
-- **Elasticsearch**: `https://your-route-hostname`
-- **ElasticVue UI**: `https://your-elasticvue-route-hostname`
+- **Elasticsearch**: `https://your-route-hostname` (if TLS is enabled)
+- **Kibana UI**: `http://your-kibana-route-hostname` (**default**)  
+  If you configured TLS, use `https://your-kibana-route-hostname`
 
 ### Internal Access
 
-- **Elasticsearch Service**: `quickstart-es-http.elasticsearch.svc:9200`
-- **ElasticVue Service**: `my-elasticsearch-elasticvue.elasticsearch.svc:8080`
+- **Elasticsearch Service**: `elasticsearch-es-http.elasticsearch.svc:9200`
+- **Kibana Service**: `elasticsearch-kb-kb-http.elasticsearch.svc:5601`
 
 ### Authentication
 
-If authentication is enabled:
+**Username**: `elastic`
 
+**Get Password**:
 ```bash
-# Get the elastic user password
-oc get secret quickstart-es-elastic-user -n elasticsearch -o jsonpath='{.data.elastic}' | base64 -d
-
-# Test connection
-curl -k -u elastic:$(oc get secret quickstart-es-elastic-user -n elasticsearch -o jsonpath='{.data.elastic}' | base64 -d) https://localhost:9200
+oc get secret elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' | base64 -d
 ```
 
-## Management
+**Test Elasticsearch Connection**:
+```bash
+oc exec -c elasticsearch $(oc get pods -l cluster-name=elasticsearch -o jsonpath='{.items[0].metadata.name}') -- curl -k -u elastic:$(oc get secret elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' | base64 -d) https://localhost:9200
+```
+
+**Test from External**:
+```bash
+curl -k -u elastic:$(oc get secret elasticsearch-es-elastic-user -o jsonpath='{.data.elastic}' | base64 -d) https://your-elasticsearch-route-hostname
+```
+
+### Kibana Access
+
+**First Time Setup**:
+1. Access Kibana URL from the route (**http** by default)
+2. Login with username: `elastic`
+3. Password: Use the command above to get the password
+4. Follow the Kibana setup wizard
+
+**Kibana Features**:
+- **Discover**: Search and explore your data
+- **Visualize**: Create charts and graphs
+- **Dashboard**: Build custom dashboards
+- **Management**: Configure indices, users, and settings
+
+## Monitoring and Management
+
+### Cluster Status
+
+```bash
+# Check Elasticsearch cluster status
+oc get elasticsearch elasticsearch -n elasticsearch
+
+# Check Kibana status
+oc get kibana elasticsearch-kb -n elasticsearch
+
+# Check all pods
+oc get pods -n elasticsearch -l cluster-name=elasticsearch
+
+# Check PodDisruptionBudget
+oc get pdb -n elasticsearch
+```
+
+### Cluster Health
+
+```bash
+# Get cluster health
+oc exec -n elasticsearch -c elasticsearch $(oc get pods -n elasticsearch -l cluster-name=elasticsearch -o jsonpath='{.items[0].metadata.name}') -- curl -k -u elastic:$(oc get secret elasticsearch-es-elastic-user -n elasticsearch -o jsonpath='{.data.elastic}' | base64 -d) https://localhost:9200/_cluster/health
+
+# Get cluster info
+oc exec -n elasticsearch -c elasticsearch $(oc get pods -n elasticsearch -l cluster-name=elasticsearch -o jsonpath='{.items[0].metadata.name}') -- curl -k -u elastic:$(oc get secret elasticsearch-es-elastic-user -n elasticsearch -o jsonpath='{.data.elastic}' | base64 -d) https://localhost:9200/_cluster/stats
+
+# List indices
+oc exec -n elasticsearch -c elasticsearch $(oc get pods -n elasticsearch -l cluster-name=elasticsearch -o jsonpath='{.items[0].metadata.name}') -- curl -k -u elastic:$(oc get secret elasticsearch-es-elastic-user -n elasticsearch -o jsonpath='{.data.elastic}' | base64 -d) https://localhost:9200/_cat/indices
+```
 
 ### Scaling
 
 ```bash
 # Scale Elasticsearch nodes
-oc patch elasticsearch quickstart -n elasticsearch --type='merge' -p='{"spec":{"nodeSets":[{"name":"default","count":5}]}}'
+oc patch elasticsearch elasticsearch -n elasticsearch --type='merge' -p='{"spec":{"nodeSets":[{"name":"default","count":3}]}}'
 
-# Scale ElasticVue
-oc scale deployment my-elasticsearch-elasticvue -n elasticsearch --replicas=3
+# Scale Kibana
+oc patch kibana elasticsearch-kb -n elasticsearch --type='merge' -p='{"spec":{"count":2}}'
 ```
 
 ### Backup and Restore
 
 ```bash
 # Create a snapshot repository
-curl -X PUT "localhost:9200/_snapshot/my_backup" -H 'Content-Type: application/json' -d'
+curl -X PUT "https://your-elasticsearch-route/_snapshot/my_backup" -H 'Content-Type: application/json' -d'
 {
   "type": "fs",
   "settings": {
     "location": "/usr/share/elasticsearch/data/backup"
   }
-}'
+}' -u elastic:$(oc get secret elasticsearch-es-elastic-user -n elasticsearch -o jsonpath='{.data.elastic}' | base64 -d) -k
 
 # Create a snapshot
-curl -X PUT "localhost:9200/_snapshot/my_backup/snapshot_1?wait_for_completion=true"
+curl -X PUT "https://your-elasticsearch-route/_snapshot/my_backup/snapshot_1?wait_for_completion=true" -u elastic:$(oc get secret elasticsearch-es-elastic-user -n elasticsearch -o jsonpath='{.data.elastic}' | base64 -d) -k
 ```
 
-### Monitoring
+### Logs and Debugging
 
 ```bash
-# Check cluster health
-oc exec -n elasticsearch -c elasticsearch $(oc get pods -n elasticsearch -l common.k8s.elastic.co/type=elasticsearch -o jsonpath='{.items[0].metadata.name}') -- curl -k -u elastic:$(oc get secret quickstart-es-elastic-user -n elasticsearch -o jsonpath='{.data.elastic}' | base64 -d) https://localhost:9200/_cluster/health
+# Check Elasticsearch logs
+oc logs -n elasticsearch -l cluster-name=elasticsearch
 
-# Check indices
-oc exec -n elasticsearch -c elasticsearch $(oc get pods -n elasticsearch -l common.k8s.elastic.co/type=elasticsearch -o jsonpath='{.items[0].metadata.name}') -- curl -k -u elastic:$(oc get secret quickstart-es-elastic-user -n elasticsearch -o jsonpath='{.data.elastic}' | base64 -d) https://localhost:9200/_cat/indices
+# Check Kibana logs
+oc logs -n elasticsearch -l common.k8s.elastic.co/type=kibana
+
+# Check operator logs
+oc logs -n openshift-operators-redhat -l name=elastic-operator
+
+# Check events
+oc get events -n elasticsearch --sort-by='.lastTimestamp'
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **OpenShift Logging Operator not found**
-   - Ensure the OpenShift Logging Operator is installed in `openshift-logging` namespace
-   - Check operator status: `oc get pods -n openshift-logging -l name=cluster-logging-operator`
+1. **Elasticsearch Operator not found**
+   - Ensure the Elasticsearch Operator is installed in `openshift-operators-redhat` namespace
+   - Check operator status: `oc get pods -n openshift-operators-redhat -l name=elastic-operator`
    - Install operator if missing (see installation section above)
 
 2. **Pods stuck in Pending state**
@@ -257,7 +323,7 @@ oc exec -n elasticsearch -c elasticsearch $(oc get pods -n elasticsearch -l comm
    - Ensure the operator is running and healthy
 
 3. **Authentication issues**
-   - Ensure the elastic user secret exists
+   - Ensure the elastic user secret exists: `oc get secret elasticsearch-es-elastic-user -n elasticsearch`
    - Check if TLS is properly configured
    - Verify the operator has created the necessary secrets
 
@@ -266,20 +332,97 @@ oc exec -n elasticsearch -c elasticsearch $(oc get pods -n elasticsearch -l comm
    - Check if the service is running
    - Ensure the operator has created the Elasticsearch service
 
+5. **Kibana not starting**
+   - Check Kibana status: `oc get kibana elasticsearch-kb -n elasticsearch`
+   - Verify Elasticsearch cluster is healthy
+   - Check Kibana logs for errors
+
+6. **PodDisruptionBudget issues**
+   - Check PDB status: `oc get pdb -n elasticsearch`
+   - Verify node count matches PDB configuration
+   - Adjust PDB settings if needed
+
 ### Useful Commands
 
 ```bash
 # Check operator status
-oc get pods -n openshift-logging -l name=cluster-logging-operator
+oc get pods -n openshift-operators-redhat -l name=elastic-operator
 
 # Check Elasticsearch status
-oc get elasticsearch -n elasticsearch -o yaml
+oc get elasticsearch elasticsearch -n elasticsearch -o yaml
 
-# Check logs
-oc logs -n elasticsearch -l cluster-name=elasticsearch
+# Check Kibana status
+oc get kibana elasticsearch-kb -n elasticsearch -o yaml
 
-# Check events
-oc get events -n elasticsearch --sort-by='.lastTimestamp'
+# Check all resources
+oc get all -n elasticsearch
+
+# Check secrets
+oc get secrets -n elasticsearch | grep elastic
+
+# Check routes
+oc get routes -n elasticsearch
+```
+
+## Security and Best Practices
+
+### Security Considerations
+
+1. **TLS/SSL**: The cluster uses self-signed certificates by default. For production:
+   - Configure proper TLS certificates
+   - Use certificate management solutions (cert-manager, etc.)
+
+2. **Authentication**: 
+   - Change default passwords after first login
+   - Use role-based access control (RBAC)
+   - Consider integrating with external authentication providers
+
+3. **Network Security**:
+   - Use network policies to restrict pod-to-pod communication
+   - Configure firewall rules for external access
+   - Use private networks when possible
+
+### Production Recommendations
+
+1. **Resource Planning**:
+   - Use dedicated nodes for Elasticsearch
+   - Allocate sufficient memory (at least 2GB per node)
+   - Use SSD storage for better performance
+
+2. **High Availability**:
+   - Deploy at least 3 nodes for production
+   - Configure proper replica settings
+   - Use multiple availability zones
+
+3. **Monitoring**:
+   - Set up monitoring with Prometheus/Grafana
+   - Configure alerting for cluster health
+   - Monitor resource usage and performance
+
+4. **Backup Strategy**:
+   - Configure regular snapshots
+   - Test restore procedures
+   - Store backups in multiple locations
+
+### PodDisruptionBudget Configuration
+
+For different cluster sizes:
+
+```yaml
+# Single node (development)
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# 3 nodes (staging)
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# 5+ nodes (production)
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 3
 ```
 
 ## Uninstallation
@@ -304,7 +447,7 @@ oc delete namespace elasticsearch
 
 ## License
 
-This project is licensed under the Apache License 2.0.
+This project is licensed under the MIT License.
 
 ## Support
 

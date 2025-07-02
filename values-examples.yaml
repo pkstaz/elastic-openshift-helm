@@ -1,28 +1,28 @@
-# Default values for elasticsearch-openshift
-# This is a YAML-formatted file.
+# Example values for elasticsearch-openshift
+# Use this file as a template for your own custom values.
 
 # Namespace configuration
 namespace:
-  name: ""  # Empty means use current namespace
-  create: false
+  name: elasticsearch-example
+  create: true
 
-# ElasticSearch cluster configuration
+# Elasticsearch cluster configuration
 elasticsearch:
-  clusterName: elasticsearch
+  clusterName: example-cluster
   version: "8.11.0"
   
   # Node sets configuration
   nodeSets:
-    count: 1
+    count: 3  # Number of nodes (set to 1 for dev, 3+ for production)
     storage:
-      size: 10Gi
+      size: 20Gi  # Storage per node
     resources:
       requests:
-        memory: 512Mi
-        cpu: 100m
-      limits:
-        memory: 1Gi
+        memory: 2Gi
         cpu: 1000m
+      limits:
+        memory: 4Gi
+        cpu: 2000m
 
 # Service configuration
 service:
@@ -31,7 +31,7 @@ service:
 # Route configuration (OpenShift specific)
 route:
   enabled: true
-  host: ""  # If empty, OpenShift will auto-generate
+  # host: "elasticsearch-example.apps.example.com"  # Uncomment to set a custom hostname
   tls:
     enabled: true
     termination: edge
@@ -39,8 +39,7 @@ route:
 # PodDisruptionBudget configuration
 podDisruptionBudget:
   enabled: true
-  minAvailable: 1  # At least 1 pod must be available
-  # maxUnavailable: 1  # Alternative: maximum 1 pod can be unavailable
+  minAvailable: 2  # For production with multiple nodes
 
 # Operator configuration
 operator:
@@ -65,7 +64,7 @@ kibana:
   # Route configuration (OpenShift specific)
   route:
     enabled: true
-    host: ""  # If empty, OpenShift will auto-generate
+    # host: "kibana-example.apps.example.com"  # Uncomment to set a custom hostname
     tls:
       enabled: true
-      termination: edge
+      termination: edge 

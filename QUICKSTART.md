@@ -4,7 +4,7 @@ This guide will help you quickly deploy Elasticsearch on OpenShift using this He
 
 ## Prerequisites
 
-- OpenShift 4.x cluster
+- OpenShift 4.18+ cluster
 - `oc` CLI tool configured and logged in
 - Helm 3.x installed
 - Elasticsearch Operator installed

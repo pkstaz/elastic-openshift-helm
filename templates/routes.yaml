@@ -9,39 +9,37 @@ metadata:
     {{- include "elasticsearch-openshift.labels" . | nindent 4 }}
     app.kubernetes.io/component: route
 spec:
-  host: {{ .Values.route.host | default (printf "%s-es-%s.%s" (include "elasticsearch-openshift.name" .) .Release.Namespace (.Values.route.host | default "apps.example.com")) }}
   to:
     kind: Service
-    name: {{ include "elasticsearch-openshift.elasticsearch.serviceName" . }}
+    name: {{ include "elasticsearch-openshift.clusterName" . }}-es-http
     weight: 100
   port:
-    targetPort: https
+    targetPort: http
   {{- if .Values.route.tls.enabled }}
   tls:
     termination: {{ .Values.route.tls.termination }}
   {{- end }}
 {{- end }}
 
-{{- if and .Values.elasticvue.enabled .Values.elasticvue.route.enabled }}
+{{- if and .Values.kibana.enabled .Values.kibana.route.enabled }}
 ---
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "elasticsearch-openshift.fullname" . }}-elasticvue
+  name: {{ include "elasticsearch-openshift.fullname" . }}-kibana
   namespace: {{ include "elasticsearch-openshift.namespace" . }}
   labels:
-    {{- include "elasticsearch-openshift.elasticvue.labels" . | nindent 4 }}
+    {{- include "elasticsearch-openshift.kibana.labels" . | nindent 4 }}
     app.kubernetes.io/component: route
 spec:
-  host: {{ .Values.elasticvue.route.host | default (printf "%s-evue-%s.%s" (include "elasticsearch-openshift.name" .) .Release.Namespace (.Values.route.host | default "apps.example.com")) }}
   to:
     kind: Service
-    name: {{ include "elasticsearch-openshift.elasticvue.serviceName" . }}
+    name: {{ include "elasticsearch-openshift.clusterName" . }}-kb-http
     weight: 100
   port:
     targetPort: http
-  {{- if .Values.elasticvue.route.tls.enabled }}
+  {{- if .Values.kibana.route.tls.enabled }}
   tls:
-    termination: {{ .Values.elasticvue.route.tls.termination }}
+    termination: {{ .Values.kibana.route.tls.termination }}
   {{- end }}
 {{- end }} 
