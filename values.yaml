@@ -9,7 +9,7 @@ namespace:
 # ElasticSearch cluster configuration
 elasticsearch:
   clusterName: elasticsearch
-  version: "8.11.0"
+  version: "8.18.3"
   
   # Node sets configuration
   nodeSets:
@@ -30,7 +30,7 @@ service:
 
 # Route configuration (OpenShift specific)
 route:
-  enabled: true
+  enabled: false
   host: ""  # If empty, OpenShift will auto-generate
   tls:
     enabled: true
@@ -50,7 +50,7 @@ operator:
 # Kibana configuration
 kibana:
   enabled: true
-  version: "8.11.0"
+  version: "8.18.3"
   replicas: 1
   
   # Resources configuration

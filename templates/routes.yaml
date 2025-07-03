@@ -3,7 +3,7 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "elasticsearch-openshift.fullname" . }}-elasticsearch
+  name: {{ include "elasticsearch-openshift.clusterName" . }}-es
   namespace: {{ include "elasticsearch-openshift.namespace" . }}
   labels:
     {{- include "elasticsearch-openshift.labels" . | nindent 4 }}
@@ -26,7 +26,7 @@ spec:
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "elasticsearch-openshift.fullname" . }}-kibana
+  name: {{ include "elasticsearch-openshift.clusterName" . }}-kb
   namespace: {{ include "elasticsearch-openshift.namespace" . }}
   labels:
     {{- include "elasticsearch-openshift.kibana.labels" . | nindent 4 }}

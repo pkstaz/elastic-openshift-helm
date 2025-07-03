@@ -2,8 +2,8 @@ apiVersion: v2
 name: elasticsearch-openshift
 description: A Helm chart for deploying ElasticSearch using OpenShift operators
 type: application
-version: 0.1.0
-appVersion: "8.11.0"
+version: 0.1.1
+appVersion: "8.18.3"
 icon: https://raw.githubusercontent.com/elastic/elasticsearch/main/docs/src/main/resources/static/images/logo-elasticsearch-32-color.png
 maintainers:
   - name: Carlos Estay

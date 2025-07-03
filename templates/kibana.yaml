@@ -3,7 +3,7 @@
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
-  name: {{ include "elasticsearch-openshift.clusterName" . }}-kb
+  name: {{ include "elasticsearch-openshift.clusterName" . }}
   namespace: {{ include "elasticsearch-openshift.namespace" . }}
   labels:
     {{- include "elasticsearch-openshift.kibana.labels" . | nindent 4 }}

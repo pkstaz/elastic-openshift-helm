@@ -92,7 +92,7 @@ Elasticsearch service URL
 Kibana service name
 */}}
 {{- define "elasticsearch-openshift.kibana.serviceName" -}}
-{{- printf "%s-kb" (include "elasticsearch-openshift.fullname" .) }}
+{{- printf "%s-kb-http" (include "elasticsearch-openshift.clusterName" .) }}
 {{- end }}
 
 {{/*
